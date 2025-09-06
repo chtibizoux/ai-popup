@@ -10,7 +10,7 @@ from PySide6.QtWidgets import (
     QCompleter,
 )
 
-from clipboard_utils import read_text, write_text
+import clipboard_utils as clipboard
 from constants import OLLAMA_MODEL, examples
 from state import AppState
 from worker import StreamWorker
@@ -32,7 +32,6 @@ class PromptWindow(QWidget):
 
         self.instruction_edit = QLineEdit()
         self.instruction_edit.setPlaceholderText("Décrivez la correction ou transformation souhaitée...")
-        # default instruction
         self.instruction_edit.setText(examples[0])
 
         completer = QCompleter(examples, self)
@@ -80,14 +79,12 @@ class PromptWindow(QWidget):
 
         self.state: AppState = AppState.IDLE
 
-        # Enter to start from instruction
         self.instruction_edit.returnPressed.connect(self.on_primary_button)
 
         self.load_clipboard_text()
         self.apply_state()
 
     def apply_state(self):
-        # Central UI updates based on state
         if self.state == AppState.IDLE:
             self.result_label.hide()
             self.result_edit.hide()
@@ -111,21 +108,18 @@ class PromptWindow(QWidget):
             self.start_button.setText("🔁 Recommencer")
 
     def load_clipboard_text(self):
-        text = read_text()
+        text = clipboard.read_text()
         if not text.strip():
             self.show_error("Aucun texte trouvé dans le presse-papier.")
             return
         self.original_edit.setPlainText(text)
 
     def on_primary_button(self):
-        # Button behavior depends on state
         if self.state == AppState.IDLE:
             self.start_processing()
         elif self.state == AppState.RUNNING:
-            # cancel
             self.cancel_processing()
         elif self.state == AppState.FINISHED:
-            # restart processing using possibly edited result or original? Use original text area content
             self.start_processing()
 
     def start_processing(self):
@@ -141,12 +135,10 @@ class PromptWindow(QWidget):
         self.state = AppState.RUNNING
         self.apply_state()
 
-        prompt = f"{instruction}\n\n{input_text}"
+        prompt = f"{instruction} :\n{input_text}"
 
-        # Ensure any previous worker is stopped
         self.teardown_worker()
 
-        # Start new worker thread
         self._thread = QThread(self)
         self._worker = StreamWorker(model=OLLAMA_MODEL, prompt=prompt)
         self._worker.moveToThread(self._thread)
@@ -157,10 +149,14 @@ class PromptWindow(QWidget):
         self._thread.start()
 
     def cancel_processing(self):
-        # Stop the worker and reset to IDLE
         self.teardown_worker()
         self.state = AppState.IDLE
         self.apply_state()
+
+    def copy_result_text(self):
+        text = self.result_edit.toPlainText()
+        clipboard.write_text(text)
+        self.close()
 
     def append_text(self, text: str):
         self.result_edit.moveCursor(self.result_edit.textCursor().MoveOperation.End)
@@ -169,14 +165,8 @@ class PromptWindow(QWidget):
 
     def on_process_done(self):
         self.teardown_worker()
-
         self.state = AppState.FINISHED
         self.apply_state()
-
-    def copy_result_text(self):
-        text = self.result_edit.toPlainText()
-        write_text(text)
-        self.close()
 
     def on_error(self, message: str):
         self.teardown_worker()

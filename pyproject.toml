@@ -1,0 +1,7 @@
+[project]
+name = "ai-popup"
+version = "0.1.0"
+dependencies = ["requests", "pyside6"]
+
+[project.scripts]
+ai-popup = "main:main"

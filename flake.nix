@@ -5,8 +5,10 @@
     nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
     flake-utils.url = "github:numtide/flake-utils";
 
-    pyproject-nix.url = "github:pyproject-nix/pyproject.nix";
-    pyproject-nix.inputs.nixpkgs.follows = "nixpkgs";
+    pyproject-nix = {
+      url = "github:pyproject-nix/pyproject.nix";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
   outputs =
